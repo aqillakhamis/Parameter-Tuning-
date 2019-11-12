@@ -26,12 +26,12 @@ fold = 0
 #create NN model 
 def create_model(optimizer='adam'):
     # create model
-	model = Sequential()
-	model.add(Dense(10, input_dim=3, activation='tanh'))
-	model.add(Dense(2, activation='linear'))
-	# Compile model
-	model.compile(loss='mean_squared_error', optimizer=optimizer)
-	return model
+    model = Sequential()
+    model.add(Dense(10, input_dim=3, activation='tanh'))
+    model.add(Dense(2, activation='linear'))
+    # Compile model
+    model.compile(loss='mean_squared_error', optimizer=optimizer)
+    return model
 
 for train, test in kf.split(x_data): 
     fold+=1
