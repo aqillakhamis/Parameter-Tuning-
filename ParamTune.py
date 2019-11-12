@@ -24,7 +24,7 @@ x_data, y_data, header = xlsx.read('6sample.xlsx')
 kf = KFold(3, shuffle=True)
 fold = 0
 
-#create NN model 
+#create NN model
 def create_model(optimizer='adam'):
     # create model
     model = Sequential()
@@ -34,8 +34,8 @@ def create_model(optimizer='adam'):
     model.compile(loss='mean_squared_error', optimizer=optimizer)
     return model
 
-for train, test in kf.split(x_data): 
-    fold+=1
+for train, test in kf.split(x_data):
+    fold += 1
 
     x_train = x_data[train]
     y_train = y_data[train]
@@ -43,9 +43,9 @@ for train, test in kf.split(x_data):
     x_test = x_data[test]
     y_test = y_data[test]
 
-    print("Fold #{}: train={}, test={}".format(fold,train,test)) 
+    print("Fold #{}: train={}, test={}".format(fold, train, test))
 
-    #data standardization 
+    #data standardization
     std_scale_x = preprocessing.StandardScaler().fit(x_train)
     std_scale_y = preprocessing.StandardScaler().fit(y_train)
 
@@ -71,7 +71,7 @@ for train, test in kf.split(x_data):
     validator = KerasRegressor(build_fn=create_model, epochs=1000, verbose=0)
 
     #define the grid search parameter
-    optimizer = ['Adagrad','Adam']
+    optimizer = ['Adagrad', 'Adam']
     param_grid = dict(optimizer=optimizer)
 
     NNmodel = GridSearchCV(estimator=validator, param_grid=param_grid, scoring='neg_mean_squared_error', n_jobs=-1, cv=None)
