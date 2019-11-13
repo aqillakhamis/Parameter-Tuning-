@@ -6,7 +6,6 @@ import time
 import numpy as np
 import pandas as pd
 from pandas import ExcelWriter, ExcelFile
-import xlsx_utils as xlsx
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split, KFold, GridSearchCV
@@ -16,6 +15,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras import optimizers, initializers
 from keras.wrappers.scikit_learn import KerasRegressor
+
+import xlsx_utils as xlsx
 
 #read dataset
 x_data, y_data, header = xlsx.read('6sample.xlsx')
