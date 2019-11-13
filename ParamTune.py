@@ -25,6 +25,34 @@ x_data, y_data, header = xlsx.read('6sample.xlsx')
 kf = KFold(3, shuffle=True)
 fold = 0
 
+class MyKerasRegressor(KerasRegressor):
+    """Implementation of the scikit-learn regressor API for Keras.
+    """
+
+    def predict(self, x, **kwargs):
+        """Returns predictions for the given test data.
+
+        Notes
+        -----
+        This is a fix for KerasRegressor.
+        Replaced ``return np.squeeze(self.model.predict(x, **kwargs))`` with
+        ``return self.model.predict(x, **kwargs)``.
+        The np.squeeze() causes shape inconsistent. For example, with np.squeeze() the output shape
+        become (2,) if input shape is (1,2). The output shape should be the same as input shape.
+        Arguments:
+            x: array-like, shape `(n_samples, n_features)`
+                Test samples where `n_samples` is the number of samples
+                and `n_features` is the number of features.
+            **kwargs: dictionary arguments
+                Legal arguments are the arguments of `Sequential.predict`.
+        Returns:
+            preds: array-like, shape `(n_samples,)`
+                Predictions.
+        """
+        kwargs = self.filter_sk_params(Sequential.predict, kwargs)
+        #return np.squeeze(self.model.predict(x, **kwargs))
+        return self.model.predict(x, **kwargs)
+
 #create NN model
 def create_model(optimizer='adam'):
     # create model
@@ -69,7 +97,7 @@ for train, test in kf.split(x_data):
     ytrain = norm.transform(y_scale_train)
     ytest = norm.transform(y_scale_test)
 
-    validator = KerasRegressor(build_fn=create_model, epochs=1000, verbose=0)
+    validator = MyKerasRegressor(build_fn=create_model, epochs=1000, verbose=0)
 
     #define the grid search parameter
     optimizer = ['Adagrad', 'Adam']
