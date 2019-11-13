@@ -10,11 +10,11 @@ from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import train_test_split, KFold, GridSearchCV
 from sklearn import preprocessing
-import tensorflow.keras
+from tensorflow import keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras import optimizers, initializers
-from keras.wrappers.scikit_learn import KerasRegressor
+from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 
 import xlsx_utils as xlsx
 
