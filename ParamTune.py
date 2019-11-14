@@ -8,22 +8,50 @@ import pandas as pd
 from pandas import ExcelWriter, ExcelFile
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from sklearn.model_selection import train_test_split, KFold, GridSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV, KFold
 from sklearn import preprocessing
+from sklearn import metrics 
 from tensorflow import keras
-from tensorflow.keras.models import Sequential
+from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras import optimizers, initializers
 from tensorflow.keras.wrappers.scikit_learn import KerasRegressor
 
 import xlsx_utils as xlsx
+import warnings 
+warnings.filterwarnings("ignore")
 
-#read dataset
-x_data, y_data, header = xlsx.read('6sample.xlsx')
+#read dataset 
+Data, target, header = xlsx.read('6sample.xlsx')
+
+D_train, D_test, t_train, t_test = train_test_split(Data, target, test_size=0.5)
+
+#feature scaling 
+#data standardization 
+std_scale_x = preprocessing.StandardScaler().fit(D_train)
+std_scale_y = preprocessing.StandardScaler().fit(t_train)
+
+D_train = std_scale_x.transform(D_train)
+D_test = std_scale_x.transform(D_test)
+
+t_train = std_scale_y.transform(t_train)
+t_test = std_scale_y.transform(t_test)
+
+#data normalization 
+normalized = MinMaxScaler()
+normalized.fit(D_train)
+
+D_train = normalized.transform(D_train)
+D_test = normalized.transform(D_test)
+
+norm = MinMaxScaler()
+norm.fit(t_train)
+
+t_train = norm.transform(t_train)
+t_test = norm.transform(t_test) 
 
 #kFold
-kf = KFold(3, shuffle=True)
-fold = 0
+kf = KFold(n_splits=3)
 
 class MyKerasRegressor(KerasRegressor):
     """Implementation of the scikit-learn regressor API for Keras.
@@ -31,7 +59,6 @@ class MyKerasRegressor(KerasRegressor):
 
     def predict(self, x, **kwargs):
         """Returns predictions for the given test data.
-
         Notes
         -----
         This is a fix for KerasRegressor.
@@ -49,59 +76,55 @@ class MyKerasRegressor(KerasRegressor):
             preds: array-like, shape `(n_samples,)`
                 Predictions.
         """
-        kwargs = self.filter_sk_params(Sequential.predict, kwargs)
+        kwargs = self.filter_sk_params(Model.predict, kwargs)
         #return np.squeeze(self.model.predict(x, **kwargs))
         return self.model.predict(x, **kwargs)
-
+    
 #create NN model
 def create_model(optimizer='adam'):
-    # create model
-    model = Sequential()
-    model.add(Dense(10, input_dim=3, activation='tanh'))
-    model.add(Dense(2, activation='linear'))
-    # Compile model
-    model.compile(loss='mean_squared_error', optimizer=optimizer)
-    return model
+    # create model   
+    #random normal distribution with fixed seed number for random number generator 
+    random_normal = initializers.RandomNormal(mean=0.0, stddev=0.05, seed=0)
+    
+    #input layer 
+    input_layer = Input(shape=(D_train.shape[1],), name="input")
+    
+    #hidden layer 
+    hidden_layers = input_layer
+    for i in range(1): 
+        hidden_layers = Dense(10,
+                              activation='tanh',
+                              kernel_initializer=random_normal,
+                              bias_initializer=initializers.Constant(value=1.0),
+                              name="hidden_%d" % (i+1))(hidden_layers)
+        
+    #output layer
+    output_layer = Dense(t_train.shape[1],
+                         activation='linear',
+                         kernel_initializer=random_normal,
+                         name="output")(hidden_layers) 
 
-for train, test in kf.split(x_data):
-    fold += 1
+    model = Model(input_layer, output_layer)
+    model.compile(loss='mean_squared_error', optimizer=optimizer)    
+    return model 
 
-    x_train = x_data[train]
-    y_train = y_data[train]
+validator = MyKerasRegressor(build_fn=create_model, epochs=10000, verbose=0)
 
-    x_test = x_data[test]
-    y_test = y_data[test]
+#define the grid search parameter
+optimizer = ['Adagrad','Adam','Adadelta','SGD','RMSprop']
+param_grid = dict(optimizer=optimizer)
 
-    print("Fold #{}: train={}, test={}".format(fold, train, test))
+NNmodel = GridSearchCV(estimator=validator, param_grid=param_grid, n_jobs=-1, cv=kf, verbose=0)
+NNresult = NNmodel.fit(D_train,t_train, batch_size=None)
 
-    #data standardization
-    std_scale_x = preprocessing.StandardScaler().fit(x_train)
-    std_scale_y = preprocessing.StandardScaler().fit(y_train)
+# summarize results
+print("Best: %f using %s" % (-NNresult.best_score_, NNresult.best_params_))
+means = -NNresult.cv_results_['mean_test_score']
+stds = NNresult.cv_results_['std_test_score']
+params = NNresult.cv_results_['params']
+for mean, stdev, param in zip(means, stds, params):
+    print("%f (%f) with: %r" % (mean, stdev, param))
+##############################################################
+    
 
-    x_scale_train = std_scale_x.transform(x_train)
-    x_scale_test = std_scale_x.transform(x_test)
 
-    y_scale_train = std_scale_y.transform(y_train)
-    y_scale_test = std_scale_y.transform(y_test)
-
-    #data normalization
-    normalized = MinMaxScaler()
-    normalized.fit(x_scale_train)
-
-    xtrain = normalized.transform(x_scale_train)
-    xtest = normalized.transform(x_scale_test)
-
-    norm = MinMaxScaler()
-    norm.fit(y_scale_train)
-
-    ytrain = norm.transform(y_scale_train)
-    ytest = norm.transform(y_scale_test)
-
-    validator = MyKerasRegressor(build_fn=create_model, epochs=1000, verbose=0)
-
-    #define the grid search parameter
-    optimizer = ['Adagrad', 'Adam']
-    param_grid = dict(optimizer=optimizer)
-
-    NNmodel = GridSearchCV(estimator=validator, param_grid=param_grid, scoring='neg_mean_squared_error', n_jobs=-1, cv=None)
-    NNmodel.fit(xtrain, ytrain, batch_size=None)
